@@ -45,6 +45,7 @@ with tf.Session() as session:
                     image[:,:,z]=reader.read(c=c,t=t,z=z,rescale=False)
                 
                 
+                image=image/np.max(image)                
                 if deconvobj==None:
                     deconvobj=HSPIRAL(image.shape,psfs[c].shape)
                 result = deconvobj.run(image,psfs[c],session)
