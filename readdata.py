@@ -1,8 +1,9 @@
 import javabridge
 import bioformats as bf
 import numpy as np
-from hspiral import hspiral
+from hspiral import HSPIRAL
 javabridge.start_vm(class_path=bf.JARS)
+import tensorflow as tf
 
 def getImageShape(path):
     xmlimage=bf.get_omexml_metadata(path=path)
@@ -16,9 +17,9 @@ def getImageShape(path):
     return (NX,NY,NZ,NC,NT)
 
 
-path='/home/rod/tfDeconv-data/MyrSCARlifeRRokG_8.czi'
+path='/media/rcilla/CillaTufts/tfDeconv-data/MyrSCARlifeRRokG_8.czi'
 
-psfpaths=['/home/rod/tfDeconv-data/myrscarlifeRRokG_8-psfc0.ome.tif','/home/rod/tfDeconv-data/myrscarlifeRRokG_8-psfc1.ome.tif']
+psfpaths=['/media/rcilla/CillaTufts/tfDeconv-data/myrscarlifeRRokG_8-psfc0.ome.tif','/media/rcilla/CillaTufts/tfDeconv-data/myrscarlifeRRokG_8-psfc1.ome.tif']
 
 imageshape=getImageShape(path)
 
@@ -32,21 +33,20 @@ for c in range(len(psfs)):
             psfs[c][:,:,0,0,z]=psfreader.read(c=0,t=z,z=0,rescale=False)
 psfs = [psf.reshape((psf.shape[0],psf.shape[1],psf.shape[4])) for psf in psfs]
         
+psfs = [psf[24:-24,24:-24,:] for psf in psfs]
 
-
-with bf.ImageReader(path=path) as reader:
-    for c in range(imageshape[3]):
-        for t in range(imageshape[4]):
-            image=np.zeros((imageshape[0],imageshape[1],imageshape[2]))
-            for z in range(imageshape[2]):
-                image[:,:,z]=reader.read(c=c,t=t,z=z,rescale=False)
+deconvobj=None
+with tf.Session() as session:
+    with bf.ImageReader(path=path) as reader:
+        for c in range(imageshape[3]):
+            for t in range(imageshape[4]):
+                image=np.zeros((imageshape[0],imageshape[1],imageshape[2]))
+                for z in range(imageshape[2]):
+                    image[:,:,z]=reader.read(c=c,t=t,z=z,rescale=False)
                 
-            #perform deconvolution
-            result = hspiral(image,psfs[c])
-            
-            result = image*2
-            for z in range(imageshape[2]):
-                bf.write_image(pathname='result.ome.tif',pixels=result[:,:,z],pixel_type="float",z=z,c=c,t=t,size_c=imageshape[3],size_z=imageshape[2],size_t=imageshape[4])                
-            
-            
-        
+                
+                if deconvobj==None:
+                    deconvobj=HSPIRAL(image.shape,psfs[c].shape)
+                result = deconvobj.run(image,psfs[c],session)
+                
+                bf.write_image(pathname='MyrSCARlifeRRokG_8-c%d-t%03d.ome.tif'%(c,t),pixels=result,pixel_type="float",c=0,t=0,size_c=1,size_z=result.shape[2],size_t=1)
