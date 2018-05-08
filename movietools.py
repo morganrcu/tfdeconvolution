@@ -1,12 +1,10 @@
-import javabridge
+
 import bioformats as bf
 import numpy as np
-from hspiral import HSPIRAL
-import atexit
-javabridge.start_vm(class_path=bf.JARS)
-#atexit.register(javabridge.kill_vm)
 
-path='/home/morgan/movies/LifeR_RokG_WT_3.czi'
+
+
+
 
 def get_movie_shape(path):
     xml_image = bf.get_omexml_metadata(path=path)
@@ -37,15 +35,13 @@ def movie_input_generator(path,channel=0,output_type=np.uint16):
             yield image
     return
 
-import pylab
 
-NX, NY, NZ, NC, NT = get_movie_shape(path)
-
-for t,frame in enumerate(movie_input_generator(path,channel=1)):
-    for z in range(NZ):
-        bf.write_image('./out.ome.tif',pixels=frame[:,:,z],pixel_type=bf.PT_UINT16,c=0,t=t,z=z,size_c=1,size_t=NT,size_z=NZ)
-
-    #pylab.imshow(frame[:,:,2])
-    #pylab.pause(1)
-
-javabridge.kill_vm()
+def read_psf(path,output_type=np.float32):
+    NX,NY,NZ,NC,NT=get_movie_shape(path)
+    #assert(NC==1)
+    #assert(NT==1)
+    psf=np.zeros((NX,NY,NZ),dtype=output_type)
+    with bf.ImageReader(path=path) as reader:
+        for z in range(NZ):
+            psf[:, :, z] = reader.read(c=z, rescale=False)
+    return psf
