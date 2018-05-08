@@ -37,5 +37,5 @@ for t,frame in enumerate(movie_input_generator(inputpath,channel=channel)):
     print('Processing frame {0}'.format(t))
     algo = fd_restoration.RichardsonLucyDeconvolver(3).initialize()
     res = algo.run(fd_data.Acquisition(data=frame, kernel=psf), niter=30).data
-    bf.write_image(outputprefix.format(t),res,z=0,t=0,c=0,size_z=NZ,size_t=1,size_c=1)
+    bf.write_image(outputprefix.format(t),res,z=0,t=0,c=0,size_z=NZ,size_t=1,size_c=1,pixel_type=bf.omexml.PT_FLOAT)
 javabridge.kill_vm()
